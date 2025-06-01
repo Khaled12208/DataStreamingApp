@@ -1,0 +1,65 @@
+{
+  "info": {
+    "name": "Order Processing System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Order",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"orderId\": \"order-001\",\n  \"customerId\": \"cust-123\",\n  \"amount\": 150.75,\n  \"timestamp\": 1717230000000,\n  \"items\": [\"item1\", \"item2\"]\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8081/orders",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8081",
+          "path": ["orders"]
+        }
+      }
+    },
+    {
+      "name": "Get Hourly Sales",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8083/analytics/sales",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8083",
+          "path": ["analytics", "sales"]
+        }
+      }
+    },
+    {
+      "name": "Get Customer Stats",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8083/analytics/customers",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8083",
+          "path": ["analytics", "customers"]
+        }
+      }
+    },
+    {
+      "name": "Get Fraud Alerts",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8083/analytics/fraud",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8083",
+          "path": ["analytics", "fraud"]
+        }
+      }
+    }
+  ]
+}
