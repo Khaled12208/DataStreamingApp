@@ -1,0 +1,765 @@
+{
+  "info": {
+    "name": "Fraud Detection Testing - Data Streaming App",
+    "description": "Comprehensive fraud detection test scenarios for the Data Streaming Application. This collection tests both high-value order detection (>$1000) and rapid orders detection (>5 orders/minute).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost",
+      "type": "string"
+    },
+    {
+      "key": "orderProducerPort",
+      "value": "8081",
+      "type": "string"
+    },
+    {
+      "key": "analyticsPort",
+      "value": "8083",
+      "type": "string"
+    },
+    {
+      "key": "currentTimestamp",
+      "value": "{{$timestamp}}000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🏥 Health Checks",
+      "item": [
+        {
+          "name": "Order Producer Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Order Producer is healthy\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.status).to.eql(\"UP\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{orderProducerPort}}/actuator/health",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{orderProducerPort}}",
+              "path": ["actuator", "health"]
+            }
+          }
+        },
+        {
+          "name": "Analytics Consumer Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Analytics Consumer is healthy\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.status).to.eql(\"UP\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{analyticsPort}}/actuator/health",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{analyticsPort}}",
+              "path": ["actuator", "health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚨 Scenario 1: High-Value Order Fraud Detection",
+      "item": [
+        {
+          "name": "Create High-Value Order ($2500)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"High-value order accepted\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.text()).to.include(\"Order received and published\");",
+                  "});",
+                  "",
+                  "// Store order details for verification",
+                  "pm.globals.set(\"highValueOrderId\", \"fraud-test-high-value-\" + Math.floor(Math.random() * 1000));",
+                  "pm.globals.set(\"highValueCustomerId\", \"test-customer-1\");"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Generate unique order ID",
+                  "pm.globals.set(\"highValueOrderId\", \"fraud-test-high-value-\" + Math.floor(Math.random() * 1000));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{highValueOrderId}}\",\n  \"customerId\": \"test-customer-1\",\n  \"amount\": 2500.00,\n  \"timestamp\": {{currentTimestamp}},\n  \"items\": [\"expensive-jewelry\", \"luxury-watch\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{orderProducerPort}}/orders",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{orderProducerPort}}",
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Wait for Processing (30s)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Wait for stream processing",
+                  "setTimeout(function(){}, 30000);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{analyticsPort}}/analytics/fraud",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{analyticsPort}}",
+              "path": ["analytics", "fraud"]
+            }
+          }
+        },
+        {
+          "name": "Verify High-Value Fraud Alert",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"High-value fraud alert generated\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const alerts = pm.response.json();",
+                  "    ",
+                  "    // Find alerts for high-value orders",
+                  "    const highValueAlerts = alerts.filter(alert => ",
+                  "        alert.reason === \"Order amount > $1000\" && ",
+                  "        alert.amount >= 2500",
+                  "    );",
+                  "    ",
+                  "    pm.expect(highValueAlerts.length).to.be.greaterThan(0);",
+                  "    ",
+                  "    // Verify alert structure",
+                  "    const alert = highValueAlerts[0];",
+                  "    pm.expect(alert).to.have.property('id');",
+                  "    pm.expect(alert).to.have.property('customerId');",
+                  "    pm.expect(alert).to.have.property('orderId');",
+                  "    pm.expect(alert.amount).to.be.greaterThan(1000);",
+                  "    pm.expect(alert.reason).to.eql(\"Order amount > $1000\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{analyticsPort}}/analytics/fraud",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{analyticsPort}}",
+              "path": ["analytics", "fraud"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "⚡ Scenario 2: Rapid Orders Fraud Detection",
+      "item": [
+        {
+          "name": "Rapid Order 1",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.globals.set(\"rapidCustomerId\", \"rapid-customer-\" + Math.floor(Math.random() * 100));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"rapid-1-{{$randomInt}}\",\n  \"customerId\": \"{{rapidCustomerId}}\",\n  \"amount\": 99.99,\n  \"timestamp\": {{currentTimestamp}},\n  \"items\": [\"item-1\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{orderProducerPort}}/orders",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{orderProducerPort}}",
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Rapid Order 2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"rapid-2-{{$randomInt}}\",\n  \"customerId\": \"{{rapidCustomerId}}\",\n  \"amount\": 99.99,\n  \"timestamp\": {{currentTimestamp}},\n  \"items\": [\"item-2\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{orderProducerPort}}/orders",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{orderProducerPort}}",
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Rapid Order 3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"rapid-3-{{$randomInt}}\",\n  \"customerId\": \"{{rapidCustomerId}}\",\n  \"amount\": 99.99,\n  \"timestamp\": {{currentTimestamp}},\n  \"items\": [\"item-3\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{orderProducerPort}}/orders",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{orderProducerPort}}",
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Rapid Order 4",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"rapid-4-{{$randomInt}}\",\n  \"customerId\": \"{{rapidCustomerId}}\",\n  \"amount\": 99.99,\n  \"timestamp\": {{currentTimestamp}},\n  \"items\": [\"item-4\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{orderProducerPort}}/orders",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{orderProducerPort}}",
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Rapid Order 5",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"rapid-5-{{$randomInt}}\",\n  \"customerId\": \"{{rapidCustomerId}}\",\n  \"amount\": 99.99,\n  \"timestamp\": {{currentTimestamp}},\n  \"items\": [\"item-5\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{orderProducerPort}}/orders",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{orderProducerPort}}",
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Rapid Order 6 (Triggers Alert)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Rapid order 6 accepted\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.text()).to.include(\"Order received and published\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"rapid-6-{{$randomInt}}\",\n  \"customerId\": \"{{rapidCustomerId}}\",\n  \"amount\": 99.99,\n  \"timestamp\": {{currentTimestamp}},\n  \"items\": [\"item-6\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{orderProducerPort}}/orders",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{orderProducerPort}}",
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Wait for Rapid Orders Processing (30s)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Wait for stream processing",
+                  "setTimeout(function(){}, 30000);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{analyticsPort}}/analytics/fraud",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{analyticsPort}}",
+              "path": ["analytics", "fraud"]
+            }
+          }
+        },
+        {
+          "name": "Verify Rapid Orders Fraud Alert",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Rapid orders fraud alert generated\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const alerts = pm.response.json();",
+                  "    ",
+                  "    // Find alerts for rapid orders",
+                  "    const rapidAlerts = alerts.filter(alert => ",
+                  "        alert.reason === \">5 orders per minute\"",
+                  "    );",
+                  "    ",
+                  "    pm.expect(rapidAlerts.length).to.be.greaterThan(0);",
+                  "    ",
+                  "    // Verify alert structure",
+                  "    const alert = rapidAlerts[0];",
+                  "    pm.expect(alert).to.have.property('id');",
+                  "    pm.expect(alert).to.have.property('customerId');",
+                  "    pm.expect(alert.orderCount).to.be.greaterThan(5);",
+                  "    pm.expect(alert.reason).to.eql(\">5 orders per minute\");",
+                  "    pm.expect(alert.orderId).to.be.null;",
+                  "    pm.expect(alert.amount).to.be.null;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{analyticsPort}}/analytics/fraud",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{analyticsPort}}",
+              "path": ["analytics", "fraud"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎯 Scenario 3: Edge Case Testing",
+      "item": [
+        {
+          "name": "Order at Threshold ($1000 - Should NOT trigger)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Order at threshold accepted\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.text()).to.include(\"Order received and published\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"edge-case-exact-{{$randomInt}}\",\n  \"customerId\": \"edge-customer\",\n  \"amount\": 1000.00,\n  \"timestamp\": {{currentTimestamp}},\n  \"items\": [\"at-limit-item\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{orderProducerPort}}/orders",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{orderProducerPort}}",
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Order Just Over Threshold ($1000.01 - Should trigger)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Order just over threshold accepted\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.text()).to.include(\"Order received and published\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"edge-case-over-{{$randomInt}}\",\n  \"customerId\": \"edge-customer\",\n  \"amount\": 1000.01,\n  \"timestamp\": {{currentTimestamp}},\n  \"items\": [\"just-over-limit\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{orderProducerPort}}/orders",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{orderProducerPort}}",
+              "path": ["orders"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Verification & Analytics",
+      "item": [
+        {
+          "name": "Get All Fraud Alerts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Fraud alerts retrieved successfully\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const alerts = pm.response.json();",
+                  "    pm.expect(alerts).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test(\"Fraud alerts contain expected fields\", function () {",
+                  "    const alerts = pm.response.json();",
+                  "    if (alerts.length > 0) {",
+                  "        const alert = alerts[0];",
+                  "        pm.expect(alert).to.have.property('id');",
+                  "        pm.expect(alert).to.have.property('customerId');",
+                  "        pm.expect(alert).to.have.property('reason');",
+                  "        pm.expect(alert).to.have.property('createdAt');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{analyticsPort}}/analytics/fraud",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{analyticsPort}}",
+              "path": ["analytics", "fraud"]
+            }
+          }
+        },
+        {
+          "name": "Get High-Value Fraud Alerts Only",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"High-value fraud alerts found\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const alerts = pm.response.json();",
+                  "    const highValueAlerts = alerts.filter(alert => alert.reason === \"Order amount > $1000\");",
+                  "    pm.expect(highValueAlerts.length).to.be.greaterThan(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{analyticsPort}}/analytics/fraud",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{analyticsPort}}",
+              "path": ["analytics", "fraud"]
+            }
+          }
+        },
+        {
+          "name": "Get Rapid Orders Fraud Alerts Only",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Rapid orders fraud alerts found\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const alerts = pm.response.json();",
+                  "    const rapidAlerts = alerts.filter(alert => alert.reason === \">5 orders per minute\");",
+                  "    pm.expect(rapidAlerts.length).to.be.greaterThan(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{analyticsPort}}/analytics/fraud",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{analyticsPort}}",
+              "path": ["analytics", "fraud"]
+            }
+          }
+        },
+        {
+          "name": "Get Customer Statistics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Customer statistics retrieved\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const stats = pm.response.json();",
+                  "    pm.expect(stats).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{analyticsPort}}/analytics/customers",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{analyticsPort}}",
+              "path": ["analytics", "customers"]
+            }
+          }
+        },
+        {
+          "name": "Get Hourly Sales Analytics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Sales analytics retrieved\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const sales = pm.response.json();",
+                  "    pm.expect(sales).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}:{{analyticsPort}}/analytics/sales",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{analyticsPort}}",
+              "path": ["analytics", "sales"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔥 Load Testing Scenario",
+      "item": [
+        {
+          "name": "Load Test - Mixed Orders (Normal + Fraud)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Load test order accepted\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"load-{{$randomInt}}\",\n  \"customerId\": \"load-customer-{{$randomInt}}\",\n  \"amount\": {{$randomInt}},\n  \"timestamp\": {{currentTimestamp}},\n  \"items\": [\"load-item-{{$randomInt}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{orderProducerPort}}/orders",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{orderProducerPort}}",
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Load Test - High Value Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"load-fraud-{{$randomInt}}\",\n  \"customerId\": \"load-fraud-customer\",\n  \"amount\": {{$randomInt}},\n  \"timestamp\": {{currentTimestamp}},\n  \"items\": [\"expensive-load-item\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}:{{orderProducerPort}}/orders",
+              "protocol": "http",
+              "host": ["{{baseUrl}}"],
+              "port": "{{orderProducerPort}}",
+              "path": ["orders"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
