@@ -6,6 +6,12 @@
 [![Apache Kafka](https://img.shields.io/badge/Apache%20Kafka-7.5.0-black.svg)](https://kafka.apache.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue.svg)](https://www.postgresql.org/)
 
+## 🏗️ System Architecture
+
+![Data Streaming Application System Design](docs/system_design_architecture.png)
+
+_Complete system architecture showing real-time data flow from order submission through Kafka topics, Flink stream processing, to analytics storage and fraud detection._
+
 ## 🎯 Overview
 
 A real-time data streaming application built with modern distributed systems technologies. This application demonstrates event-driven architecture, stream processing, and real-time analytics for order processing with fraud detection capabilities.
