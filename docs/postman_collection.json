@@ -1,8 +1,9 @@
 {
   "info": {
     "name": "Data Streaming App - Complete API Collection",
-    "description": "Complete API collection for the Data Streaming Application with Order Producer, Stream Processor, and Analytics Consumer",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "description": "Complete API collection for the Data Streaming Application with Order Producer, Stream Processor, and Analytics Consumer. Fixed version to resolve ENOTFOUND errors.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "2.0.0"
   },
   "item": [
     {
@@ -14,10 +15,8 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8081/actuator/health",
-              "protocol": "http",
-              "host": ["localhost"],
-              "port": "8081",
+              "raw": "{{order_producer_url}}/actuator/health",
+              "host": ["{{order_producer_url}}"],
               "path": ["actuator", "health"]
             }
           },
@@ -35,13 +34,11 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"orderId\": \"order-{{$randomInt}}\",\n  \"customerId\": \"customer1\",\n  \"amount\": 150.75,\n  \"timestamp\": {{$timestamp}}000,\n  \"items\": [\"laptop\", \"mouse\"]\n}"
+              "raw": "{\n  \"orderId\": \"order-{{$randomInt}}\",\n  \"customerId\": \"customer1\",\n  \"amount\": 150.75,\n  \"timestamp\": {{current_timestamp}},\n  \"items\": [\"laptop\", \"mouse\"]\n}"
             },
             "url": {
-              "raw": "http://localhost:8081/orders",
-              "protocol": "http",
-              "host": ["localhost"],
-              "port": "8081",
+              "raw": "{{order_producer_url}}/orders",
+              "host": ["{{order_producer_url}}"],
               "path": ["orders"]
             }
           },
@@ -59,13 +56,11 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"orderId\": \"fraud-order-{{$randomInt}}\",\n  \"customerId\": \"customer2\",\n  \"amount\": 1500.00,\n  \"timestamp\": {{$timestamp}}000,\n  \"items\": [\"expensive-item\"]\n}"
+              "raw": "{\n  \"orderId\": \"fraud-order-{{$randomInt}}\",\n  \"customerId\": \"customer2\",\n  \"amount\": 1500.00,\n  \"timestamp\": {{current_timestamp}},\n  \"items\": [\"expensive-item\"]\n}"
             },
             "url": {
-              "raw": "http://localhost:8081/orders",
-              "protocol": "http",
-              "host": ["localhost"],
-              "port": "8081",
+              "raw": "{{order_producer_url}}/orders",
+              "host": ["{{order_producer_url}}"],
               "path": ["orders"]
             }
           },
@@ -83,13 +78,11 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"orderId\": \"bulk-{{$randomInt}}\",\n  \"customerId\": \"customer3\",\n  \"amount\": 299.99,\n  \"timestamp\": {{$timestamp}}000,\n  \"items\": [\"item1\", \"item2\", \"item3\"]\n}"
+              "raw": "{\n  \"orderId\": \"bulk-{{$randomInt}}\",\n  \"customerId\": \"customer3\",\n  \"amount\": 299.99,\n  \"timestamp\": {{current_timestamp}},\n  \"items\": [\"item1\", \"item2\", \"item3\"]\n}"
             },
             "url": {
-              "raw": "http://localhost:8081/orders",
-              "protocol": "http",
-              "host": ["localhost"],
-              "port": "8081",
+              "raw": "{{order_producer_url}}/orders",
+              "host": ["{{order_producer_url}}"],
               "path": ["orders"]
             }
           },
@@ -106,10 +99,8 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8083/actuator/health",
-              "protocol": "http",
-              "host": ["localhost"],
-              "port": "8083",
+              "raw": "{{analytics_consumer_url}}/actuator/health",
+              "host": ["{{analytics_consumer_url}}"],
               "path": ["actuator", "health"]
             }
           },
@@ -121,10 +112,8 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8083/analytics/sales",
-              "protocol": "http",
-              "host": ["localhost"],
-              "port": "8083",
+              "raw": "{{analytics_consumer_url}}/analytics/sales",
+              "host": ["{{analytics_consumer_url}}"],
               "path": ["analytics", "sales"]
             }
           },
@@ -136,10 +125,8 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8083/analytics/customers",
-              "protocol": "http",
-              "host": ["localhost"],
-              "port": "8083",
+              "raw": "{{analytics_consumer_url}}/analytics/customers",
+              "host": ["{{analytics_consumer_url}}"],
               "path": ["analytics", "customers"]
             }
           },
@@ -151,10 +138,8 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8083/analytics/fraud",
-              "protocol": "http",
-              "host": ["localhost"],
-              "port": "8083",
+              "raw": "{{analytics_consumer_url}}/analytics/fraud",
+              "host": ["{{analytics_consumer_url}}"],
               "path": ["analytics", "fraud"]
             }
           },
@@ -171,10 +156,8 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8080",
-              "protocol": "http",
-              "host": ["localhost"],
-              "port": "8080"
+              "raw": "{{kafka_ui_url}}",
+              "host": ["{{kafka_ui_url}}"]
             }
           },
           "response": []
@@ -185,10 +168,8 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8082",
-              "protocol": "http",
-              "host": ["localhost"],
-              "port": "8082"
+              "raw": "{{flink_dashboard_url}}",
+              "host": ["{{flink_dashboard_url}}"]
             }
           },
           "response": []
@@ -199,10 +180,8 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8082/jobs",
-              "protocol": "http",
-              "host": ["localhost"],
-              "port": "8082",
+              "raw": "{{flink_dashboard_url}}/jobs",
+              "host": ["{{flink_dashboard_url}}"],
               "path": ["jobs"]
             }
           },
@@ -214,10 +193,8 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "http://localhost:8082/taskmanagers",
-              "protocol": "http",
-              "host": ["localhost"],
-              "port": "8082",
+              "raw": "{{flink_dashboard_url}}/taskmanagers",
+              "host": ["{{flink_dashboard_url}}"],
               "path": ["taskmanagers"]
             }
           },
